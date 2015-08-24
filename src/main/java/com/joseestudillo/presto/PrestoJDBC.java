@@ -41,12 +41,14 @@ public class PrestoJDBC {
 				tmp.append(String.format(", %s:%s", rsmd.getColumnName(i), rs.getObject(i)));
 			}
 			tmp.append("}");
-			//log.info(tmp.toString());
+			log.info(tmp.toString());
 		}
 		rs.close();
 	}
 
 	public static void main(String[] args) throws Exception {
+
+		//TODO overwrite the presto default logging 
 		//DOMConfigurator.configure("log4j.xml");
 		//Logger log = Logger.getLogger(PrestoJDBC.class);
 
@@ -70,7 +72,8 @@ public class PrestoJDBC {
 				"SELECT * FROM system.runtime.nodes",
 				"SELECT * FROM system.metadata.catalogs",
 				"SELECT * FROM system.runtime.queries",
-				"SELECT * FROM system.runtime.tasks"
+				"SELECT * FROM system.runtime.tasks",
+				"SELECT * FROM hive_local.default.presto_qs_tbl"
 		};
 
 		for (String query : queries) {
