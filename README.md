@@ -2,12 +2,18 @@
 
 [Presto][presto]
 [Presto Documentation][presto-docs]
+[Presto Thread at Ycombinator][ycombinator-presto]
+[Architecture description and useful information at facebook][facebook-presto]
 
 ## Concepts
 
-- _Coordinator_:
-- _Worker_:
-- _Catalog_:
+- _Node_: A node is a single installed instance of Presto on a machine.
+- _Types of presto servers_:
+  - _Coordinator_: In this mode, a presto server take the queries from clients and manage their execution on the cluster.
+  - _Worker_:
+- _Task_:  a fragment of a query plan running on a node.
+- _Catalog_: Entry to define a connector. They are property files stored by default in `$PRESTO_HOME/etc/catalogs`.
+- _Connector_: Defines a way for Presto to access different sources of data. There are predefined connectors for the most populars databases and data sources.
 
 
 ## Quick Installation
@@ -19,7 +25,7 @@ sudo mkdir -p /usr/local/facebook/presto
 ```
 
 - copy into it:
-  - `presto-server-x.y` (decompressed)
+  - `presto-server-x.y` (directory extracted from presto-server-x.y.tar.gz)
   - `presto-cli-x.y-executable.jar`
   - `presto-verifier-x.y-executable.jar`
   - `presto-benchmark-driver-x.y-executable.jar`
@@ -27,7 +33,7 @@ sudo mkdir -p /usr/local/facebook/presto
 - create the `current` directory symb link (in case you need to update this will pick up the latest version): 
 
 ```bash
-ln -s $(ls -rtd presto-server*/ | head -1) current
+ln -sf $(ls -rtd presto-server*/ | head -1) current
 ```
 
 - grant execution permissions to the all the executable jar files: 
@@ -36,17 +42,17 @@ ln -s $(ls -rtd presto-server*/ | head -1) current
 sudo chmod o+rx presto-*-executable.jar
 ```
 
-- creating symb link into the bin folder to be able to call the jar with simpler commands (`presto-cli`, `presto-verifier`, `presto-benchmark-driver`):
+- creating symb link into the $PRESTO_HOME/bin folder to be able to call the jar with simpler command names (`presto-cli`, `presto-verifier`, `presto-benchmark-driver`):
 ```bash
 (
 cd current/bin; 
-ln -s $(ls -rt ../../presto-cli-*-executable.jar | head -1) presto-cli;
-ln -s $(ls -rt ../../presto-verifier-*-executable.jar | head -1) presto-verifier;
-ln -s $(ls -rt ../../presto-benchmark-driver-*-executable.jar | head -1) presto-benchmark-driver;
+ln -sf $(ls -rt ../../presto-cli-*-executable.jar | head -1) presto-cli;
+ln -sf $(ls -rt ../../presto-verifier-*-executable.jar | head -1) presto-verifier;
+ln -sf $(ls -rt ../../presto-benchmark-driver-*-executable.jar | head -1) presto-benchmark-driver;
 )
 ```
 
-- Create presto environment var and add it to the path (this should be added in your profile.d or bash initialization script)
+- Create presto environment vars and add it to the path (this should be added in your profile.d or bash initialization script)
 
 ```bash
 export PRESTO_HOME=/usr/local/facebook/presto/current
@@ -55,7 +61,7 @@ export PATH=$PATH:$PRESTO_HOME/bin
 
 - for development, I would recommend adding the following script to the Presto binaries directory, that allows to run Presto locally relaying in the default configuration (`resources/scripts/presto-server.sh`):
 
-```BASH
+```bash
 export PRESTO_HOME=/usr/local/facebook/presto/current
 
  # Proper directory configuration (It requires user creation for execution and proper permissioning)
@@ -94,13 +100,30 @@ The server can be started as a daemon using `start` and in foreground using `run
 presto-server.sh run
 ```
 
-## Starting the CLI
+
+## Starting Presto CLI
 
 ```
 presto-cli --server localhost:8080
 ```
 
-By default, the results are paginated using `less`, thiscan be change setting the env var `PRESTO_PAGER` to use a different program, or empty to disable the pagination.
+By default, the results are paginated using `less`, this can be changed setting the env var `PRESTO_PAGER` to use a different program, or empty to disable the pagination.
+
+
+## Launching more that one server in the same host
+
+to launch a second instance of presto, it is just required to set a different port and configuration directories. There is a complete example and an script to run it at `resources/scripts/presto-server-test.sh` and the related configuration is stored at the same level at `test-config`.
+
+
+## Using Presto Verifier
+
+TODO
+
+
+## Using Presto Benchmark Driver
+
+TODO
+
  
 ## Adding a catalog
 
@@ -114,15 +137,24 @@ connector.name=hive-hadoop2
 hive.metastore.uri=thrift://localhost:10000
 ```
 
-This will require to restart the server and the hive instance must be running.
+Check how to run a local version of hive at [Hive quick start][hive-quickstart]
+
+This will require to restart the presto server.
+
 
 ## Example using local hive
 
-- Create a table in hive and add content
+- Open beeline and connect to hive using `!connect jdbc:hive2://localhost:10000`
 
-connect to hive using `!connect jdbc:hive2://localhost:10000`
+- Create a dummy table and dummy data. The data file will be `/tmp/data.txt` and its content could be something like:
 
-create a dummy table:
+```bash
+a, 1
+b, 2
+c, 3
+```
+
+Once the file is in place we can run the following HQL code in the Beeline CLI:
 
 ```SQL		
 DROP TABLE IF EXISTS presto_qs_tbl;
@@ -131,29 +163,24 @@ CREATE EXTERNAL TABLE IF NOT EXISTS presto_qs_tbl(aString String, aInt INT) ROW 
 LOAD DATA LOCAL INPATH '/tmp/data.txt' OVERWRITE INTO TABLE presto_qs_tbl;
 ```
 
-where `/tmp/data.txt` content looks like:
-
-```bash
-a, 1
-b, 2
-c, 3
-```
-
-
-- query the table from presto-cli:
+- From presto-cli hive is accessed as follows:
 
 ```
 SELECT * FROM CATALOG_FILENAME.SCHEMA_OR_DATABASE.TABLE_NAME
 ```
 
-in out case this translates to:
+so assuming that catalog file is in `$PRESTO_HOME/etc/catalog/hive_local.properties` we get to the query:
 
 ```
 SELECT * FROM hive_local.default.presto_qs_tbl;
 ```
 
+A working example of the catalog file can be found at `resources/etc/catalog/hive_local.properties` in the project directory.
+
 
 
 [presto]: https://prestodb.io
 [presto-docs]: https://prestodb.io/docs/current
-[hive-quickstart]: www.joseestudillo.com
+[hive-quickstart]: https://github.com/joseestudillo/hive-quick-start
+[facebook-presto]: https://www.facebook.com/notes/facebook-engineering/presto-interacting-with-petabytes-of-data-at-facebook/10151786197628920
+[ycombinator-presto]: https://news.ycombinator.com/item?id=6684678

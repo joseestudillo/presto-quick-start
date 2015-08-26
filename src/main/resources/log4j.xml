@@ -8,9 +8,13 @@
 			<param name="ConversionPattern" value="%d{dd/MM/yyyy HH:mm:ss,SSS} [%p]\t [%C{1}] %m%n" />
 		</layout>
 	</appender>
-	
   	 	
   	<logger name="com.joseestudillo" additivity="false">
+    	<level value="INFO"/>
+    	<appender-ref ref="console"/>
+  	</logger>
+	
+	<logger name="com.joseestudillo.presto.PrestoJDBC" additivity="false">
     	<level value="INFO"/>
     	<appender-ref ref="console"/>
   	</logger>
